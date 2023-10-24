@@ -3,12 +3,15 @@
   "version": "0.0.1",
   "description": "",
   "main": "src/index.coffee",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "budo -d src src/index.coffee:build.js --open --live"
+    "start": "budo -d src src/index.coffee:build.js --open --live -- -p esmify"
   },
   "browserify": {
-    "transform": ["coffeeify"]
+    "transform": [
+      "coffeeify"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -17,6 +20,10 @@
     "browserify": "^17.0.0",
     "budo": "^11.8.4",
     "coffeeify": "^3.0.1",
-    "coffeescript": "^2.7.0"
+    "coffeescript": "^2.7.0",
+    "esmify": "^2.1.1"
+  },
+  "dependencies": {
+    "@socketsupply/tonic": "^15.1.2"
   }
 }

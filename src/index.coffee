@@ -1,3 +1,8 @@
-document
-.body
-.appendChild document.createTextNode "Hello world!"
+{ Tonic } = require '@socketsupply/tonic'
+class PrettyLisp extends Tonic
+  render: ->
+    @html"""
+      Pretty Lisp Transpiler
+    """
+
+Tonic.add PrettyLisp
