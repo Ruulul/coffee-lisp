@@ -1,11 +1,15 @@
 { Tonic } = require '@socketsupply/tonic'
+
+components = []
+
 processEvent = (fn, dataKey = 'event') ->
   (e) ->
     element = Tonic.match e.target, "[data-#{dataKey}]"
     return unless element? 
     event = element.dataset[dataKey]
     fn.call this, event, element, e
-class PrettyLisp extends Tonic
+
+components.push class PrettyLisp extends Tonic
   keydown: processEvent handleTabsOnTextArea = (event, textarea, e) ->
     if event == 'input'
       if e.keyCode == '\t'.charCodeAt 0
@@ -25,12 +29,16 @@ class PrettyLisp extends Tonic
         @querySelector('output').innerText = element.value 
   render: ->
     @html"""
-      <div>
-        <textarea data-event=input></textarea>
-        <pre>
-          <output></output>
-        </pre>
+       <div>
+         <textarea data-event=input></textarea>
+         <lisp-transpiler></lisp-transpiler>
       </div>
     """
 
-Tonic.add PrettyLisp
+components.push class LispTranspiler extends Tonic
+  render: ->
+    @html"""
+    <pre><output></output></pre>
+    """
+
+Tonic.add component for component in components
