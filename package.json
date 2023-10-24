@@ -1,0 +1,22 @@
+{
+  "name": "coffee-lisp",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/index.coffee",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "budo -d src src/index.coffee:build.js --open --live"
+  },
+  "browserify": {
+    "transform": ["coffeeify"]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "budo": "^11.8.4",
+    "coffeeify": "^3.0.1",
+    "coffeescript": "^2.7.0"
+  }
+}
