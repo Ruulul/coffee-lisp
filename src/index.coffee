@@ -50,12 +50,11 @@ components.push class LispTranspiler extends Tonic
     count
   _transpile: (lines, prevLine = '') ->
     return unless lines?.length > 0
-    console.log "input: #{lines.join '|'}"
     #debugger
     transpilation = []
     firstIdentation = @calculateIdentation lines[0]
-    for line, index in lines
-      console.log "Current line: #{line}"
+    do => for line, index in lines
+      continue unless (@calculateIdentation line) == firstIdentation 
       prevIdentation = @calculateIdentation prevLine if prevLine?
       currIdentation = @calculateIdentation line
       nextIdentation = @calculateIdentation nextLine if (nextLine = lines[index + 1])?
@@ -65,22 +64,16 @@ components.push class LispTranspiler extends Tonic
         when nextIdentation > currIdentation
           nextBit = lines.map @calculateIdentation
             .indexOf currIdentation, index + 1
-          console.log "nextBit is #{nextBit}"
           nextBit = undefined if nextBit is -1
-          console.log "which put us with subinput #{lines.slice index + 1, nextBit
-            .join '|'}"
-          transpilation.push """
+          """
           #{' '.repeat currIdentation}(#{line.trim()}
           #{@_transpile (lines.slice index + 1, nextBit), line}
           #{' '.repeat currIdentation})
           """
         when nextIdentation <= currIdentation
-          transpilation.push """
+          """
           #{' '.repeat currIdentation}(#{line.trim()})
           """
-    console.log "input #{lines.join '|'}\nyields\n", transpilation.join '|'
-    transpilation
-    .filter (line) => (@calculateIdentation line) == firstIdentation 
     .join '\n'
 
   transpile: (input) ->
