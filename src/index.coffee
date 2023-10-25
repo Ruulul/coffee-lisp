@@ -53,7 +53,7 @@ components.push class LispTranspiler extends Tonic
     #debugger
     transpilation = []
     firstIdentation = @calculateIdentation lines[0]
-    do => for line, index in lines
+    for line, index in lines
       continue unless (@calculateIdentation line) == firstIdentation 
       prevIdentation = @calculateIdentation prevLine if prevLine?
       currIdentation = @calculateIdentation line
@@ -65,15 +65,16 @@ components.push class LispTranspiler extends Tonic
           nextBit = lines.map @calculateIdentation
             .indexOf currIdentation, index + 1
           nextBit = undefined if nextBit is -1
-          """
+          transpilation.push """
           #{' '.repeat currIdentation}(#{line.trim()}
           #{@_transpile (lines.slice index + 1, nextBit), line}
           #{' '.repeat currIdentation})
           """
         when nextIdentation <= currIdentation
-          """
+          transpilation.push """
           #{' '.repeat currIdentation}(#{line.trim()})
           """
+    transpilation
     .join '\n'
 
   transpile: (input) ->
