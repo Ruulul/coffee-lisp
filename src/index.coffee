@@ -34,10 +34,11 @@ components.push class PrettyLisp extends Tonic
     @html"""
        <div>
            <textarea data-event=input></textarea>
-           <lisp-transpiler id=#{@id}-output></lisp-transpiler>
            <button data-event=compile>
             Compile
           </button>
+           <lisp-transpiler id=#{@id}-output>
+          </lisp-transpiler>
       </div>
     """
 
@@ -47,16 +48,14 @@ components.push class LispTranspiler extends Tonic
     for char in line
       if char == ' ' then count++ else break
     count
-  _transpile: (input, prevLine = '') ->
-    return unless input
-    console.log "input: #{input.replaceAll '\n', '|'}"
+  _transpile: (lines, prevLine = '') ->
+    return unless lines?.length > 0
+    console.log "input: #{lines.join '|'}"
     #debugger
-    pointer = 0
-    lines = input.split '\n'
     transpilation = []
     firstIdentation = @calculateIdentation lines[0]
     for line, index in lines
-      pointer += line.length + 1
+      console.log "Current line: #{line}"
       prevIdentation = @calculateIdentation prevLine if prevLine?
       currIdentation = @calculateIdentation line
       nextIdentation = @calculateIdentation nextLine if (nextLine = lines[index + 1])?
@@ -65,20 +64,21 @@ components.push class LispTranspiler extends Tonic
       switch
         when nextIdentation > currIdentation
           nextBit = lines.map @calculateIdentation
-            .indexOf currIdentation, 1
+            .indexOf currIdentation, index + 1
+          console.log "nextBit is #{nextBit}"
+          nextBit = undefined if nextBit is -1
+          console.log "which put us with subinput #{lines.slice index + 1, nextBit
+            .join '|'}"
           transpilation.push """
           #{' '.repeat currIdentation}(#{line.trim()}
-          #{@_transpile (
-            lines
-            .slice 1, nextBit
-            .join '\n'), line}
+          #{@_transpile (lines.slice index + 1, nextBit), line}
           #{' '.repeat currIdentation})
           """
         when nextIdentation <= currIdentation
           transpilation.push """
           #{' '.repeat currIdentation}(#{line.trim()})
           """
-    console.log transpilation.join '|'
+    console.log "input #{lines.join '|'}\nyields\n", transpilation.join '|'
     transpilation
     .filter (line) => (@calculateIdentation line) == firstIdentation 
     .join '\n'
@@ -86,7 +86,7 @@ components.push class LispTranspiler extends Tonic
   transpile: (input) ->
     @state.output = 'transpiling...'
     @reRender()
-    @state.output = String @_transpile input
+    @state.output = String @_transpile input.split '\n'
     @reRender()
   render: ->
     @html"""
