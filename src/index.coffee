@@ -1,4 +1,5 @@
 { Tonic } = require '@socketsupply/tonic'
+{ tokenize, parseTokens, evalTree } = require './lisp.coffee'
 
 components = []
 
@@ -29,7 +30,7 @@ components.push class PrettyLisp extends Tonic
   input: processEvent (event, element) ->
     switch event
       when 'input'
-        @querySelector('output').innerText = element.value 
+        @querySelector('output[data-output=lisp]').innerText = element.value 
   render: ->
     @html"""
        <div>
@@ -43,6 +44,18 @@ components.push class PrettyLisp extends Tonic
     """
 
 components.push class LispTranspiler extends Tonic
+  click: processEvent (event, el, e) ->
+    e.preventDefault()
+    switch event
+      when 'eval'
+        tokens = tokenize @state.output
+
+        tree = parseTokens tokens.reverse()
+
+        @state.eval = try evalTree tree catch e 
+          console.log e
+          String e
+        @reRender()
   calculateIdentation: (line) ->
     count = 0
     for char in line
@@ -54,9 +67,8 @@ components.push class LispTranspiler extends Tonic
     transpilation = []
     firstIdentation = @calculateIdentation lines[0]
     for line, index in lines
-      continue unless (@calculateIdentation line) == firstIdentation 
+      continue unless (currIdentation = @calculateIdentation line) == firstIdentation 
       prevIdentation = @calculateIdentation prevLine if prevLine?
-      currIdentation = @calculateIdentation line
       nextIdentation = @calculateIdentation nextLine if (nextLine = lines[index + 1])?
       prevIdentation ?= 0
       nextIdentation ?= 0
@@ -84,7 +96,9 @@ components.push class LispTranspiler extends Tonic
     @reRender()
   render: ->
     @html"""
-    <pre><output>#{@state.output}</output></pre>
+    <pre><output data-output=lisp>#{@state.output}</output></pre>
+    <button data-event=eval>Eval output</button>
+    <pre><output data-output=eval>#{String @state.eval}</button></pre>
     """
 
 Tonic.add component for component in components
