@@ -13,8 +13,8 @@ exports.Env = Env = (obj) ->
 
 exports.tokenize = tokenize = (input) -> (
   input
-  .replace /\(/g, ' ( '
-  .replace /\)/g, ' ) '
+  .replaceAll '(', ' ( '
+  .replaceAll ')', ' ) '
   .trim()
   .split /\s+/
 )
