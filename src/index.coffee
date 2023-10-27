@@ -1,5 +1,5 @@
 { Tonic } = require '@socketsupply/tonic'
-{ tokenize, parseTokens, evalTree } = require './lisp.coffee'
+{ tokenize, parseTokens, evalTree } = lisp = require './lisp.coffee'
 
 components = []
 
@@ -52,7 +52,7 @@ components.push class LispTranspiler extends Tonic
 
         tree = parseTokens tokens.reverse()
 
-        @state.eval = try evalTree tree catch e 
+        @state.eval = try evalTree tree, lisp.doFreshEnv() catch e 
           console.log e
           String e
         @reRender()
