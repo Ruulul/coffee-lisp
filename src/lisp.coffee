@@ -75,14 +75,19 @@ exports.addGlobals = addGlobals = (env) ->
     env['-']  = (args) ->  args.reduce (acc, cur) -> acc - cur
     env['*']  = (args) ->  args.reduce (acc, cur) -> acc * cur
     env['/']  = (args) ->  args.reduce (acc, cur) -> acc / cur
-    env['>']  = ([a, b]) ->  a > b
-    env['<']  = ([a, b]) ->  a < b
-    env['>='] = ([a, b]) -> a >= b
-    env['<='] = ([a, b]) -> a <= b
-    env['='] = ([a, args...]) -> args.all((arg) -> arg == a)
-    env['%'] = (args) -> args.reduce (acc, cur) -> acc % cur
+    env['%']  = (args) -> args.reduce (acc, cur) -> acc % cur
     env['mod'] = (args) -> args.reduce (acc, cur) -> acc %% cur
+
+    env['>']  = (args) ->  args.reduce (acc, cur) -> acc > cur
+    env['<']  = (args) ->  args.reduce (acc, cur) -> acc < cur
+    env['>='] = (args) ->  args.reduce (acc, cur) -> acc >= cur
+    env['<='] = (args) ->  args.reduce (acc, cur) -> acc <= cur
+    env['='] = ([a, args...]) -> args.all((arg) -> arg == a)
+
+    env['and'] = (args) ->  args.reduce (acc, cur) -> acc and cur
+    env['or']  = (args) ->  args.reduce (acc, cur) -> acc or cur
     env['not'] = ([a]) -> not a
+
     env['length'] = ([a]) -> a.length
     env['cons'] = ([a, b]) -> a.concat(b)
     env['car'] = ([a]) -> a
@@ -96,10 +101,10 @@ exports.addGlobals = addGlobals = (env) ->
     env["'"] = (args) -> args
     env['"'] = (args) -> "\"#{args.join ' '}\""
     # aliases
-    env['equal?'] = '='
-    env['eq?'] = '='
-    env['string'] = '"'
-    env['quote'] = "'"
+    env['equal?'] = env['=']
+    env['eq?'] = env['=']
+    env['string'] = env['"']
+    env['quote'] = env["'"]
     env
 
 global_env = addGlobals Env { params: [], args: [], outer: undefined }
