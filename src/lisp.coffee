@@ -1,5 +1,6 @@
 
-prettyPrint = (x) -> console.log JSON.stringify x, undefined, 4
+prettyFormat = (x) -> JSON.stringify x, undefined, 4
+prettyPrint = (x) -> console.log prettyFormat x
 
 exports.Env = Env = (obj) ->
   env = {}
@@ -14,7 +15,6 @@ exports.Env = Env = (obj) ->
       env
     else
       if outer? then outer.findEnv(variable) else env
-  console.log 'new env created:', env
   env
 
 exports.tokenize = tokenize = (input) -> (
@@ -39,7 +39,11 @@ exports.parseTokens = parseTokens = (tokens) ->
     else
       if isNaN token then token else parseFloat token
 
-handleString = (string, env) -> (env.find string) ? string
+handleString = (string, env) -> 
+  switch
+    when string[0] in ['"', "'"] and string[0] is string.at -1
+      string
+    else (env.find string) ? string
 
 ###
   TODOs:
@@ -50,7 +54,6 @@ handleString = (string, env) -> (env.find string) ? string
     - [ ] make lambda definitions
 ###
 exports.evalTree = evalTree = (tree, _env) ->
-  prettyPrint tree
   env = _env ? global_env
   if tree not instanceof Array
     switch typeof tree
@@ -59,61 +62,65 @@ exports.evalTree = evalTree = (tree, _env) ->
       else
         return tree
   head = tree.shift()
-  console.log "head: #{head}"
-  if env.find(head) isnt env.find('quote')
-    tree = for argument in tree
-      switch
-        when argument instanceof Array
-          argument = evalTree argument, env 
-        when typeof argument is 'string'
-          argument = handleString argument, env
-      argument
+  env.find(head)?(tree, env) ? throw new ReferenceError " #{head} does not exist in context"
 
-  switch
-    when fn = env.find(head)
-      console.log "calling #{head} with", tree
-      fn tree, env
-    else
-      throw new ReferenceError " #{head} does not exist in context"
-
+binaryCompression = (fn) ->
+  (args, env) -> args.reduce (a, b) -> fn (evalTree a, env), (evalTree b, env)
+everyCompression = (fn) ->
+  (args, env) -> args.every (a) -> fn evalTree a, env
+mapCompression = (fn) ->
+  (args, env) -> args.map (a) -> fn evalTree a, env
 exports.addGlobals = addGlobals = (env) ->
-      env['progn'] = (args, env) -> args.at -1
+      env['progn'] = (args, env) -> 
+        result =  evalTree arg, env for arg in args
+        result
+      env['apply'] = ([fn, args], env) -> 
+        console.log "apply> fn: #{fn}, args: #{prettyFormat args}"
+        (env.find evalTree fn, env)((evalTree args, env), env)
+      env['eval'] = ([args], env) ->
+        console.log "eval> args: #{prettyFormat args}"
+        result = evalTree args, env
+        return result if result not instanceof Array
+        [fn, list...] = result
+        console.log "eval> fn: #{fn}, list: #{prettyFormat list}"
+        console.log "eval> (apply '#{fn} (list #{list.join ' '}))"
+        env['apply'] [['quote', fn], ['list', list...]], env
     # math ops
-      env['+']  = (args) ->  args.reduce (acc, cur) -> acc + cur
-      env['-']  = (args) ->  args.reduce (acc, cur) -> acc - cur
-      env['*']  = (args) ->  args.reduce (acc, cur) -> acc * cur
-      env['/']  = (args) ->  args.reduce (acc, cur) -> acc / cur
-      env['%']  = (args) -> args.reduce (acc, cur) -> acc % cur
-      env['mod'] = (args) -> args.reduce (acc, cur) -> acc %% cur
+      env['+']  = binaryCompression (a, b) -> a + b
+      env['-']  = binaryCompression (a, b) -> a - b
+      env['*']  = binaryCompression (a, b) -> a * b
+      env['/']  = binaryCompression (a, b) -> a / b
+      env['%']  = binaryCompression (a, b) -> a % b
+      env['mod'] = binaryCompression (a, b) -> a %% b
     # math comparsions
-      env['>']  = (args) ->  args.reduce (acc, cur) -> acc > cur
-      env['<']  = (args) ->  args.reduce (acc, cur) -> acc < cur
-      env['>='] = (args) ->  args.reduce (acc, cur) -> acc >= cur
-      env['<='] = (args) ->  args.reduce (acc, cur) -> acc <= cur
-      env['='] = ([a, args...]) -> args.every (arg) -> arg == a
+      env['>']  = binaryCompression (a, b) -> a > b
+      env['<']  = binaryCompression (a, b) -> a < b
+      env['>='] = binaryCompression (a, b) -> a >= b
+      env['<='] = binaryCompression (a, b) -> a == b
+      env['=']  = ([a, args...], env) -> do (args, env) -> everyCompression (b) -> b == evalTree a, env
     # boolean logic
-      env['and'] = (args) ->  args.reduce (acc, cur) -> acc and cur
-      env['or']  = (args) ->  args.reduce (acc, cur) -> acc or cur
-      env['not'] = ([a]) -> not a
+      env['and'] = binaryCompression (a, b) -> a and b
+      env['or']  = binaryCompression (a, b) -> a or b
+      env['not'] = ([a], env) -> not (evalTree a, env)
     # list operations
-      env['length'] = ([a]) -> a.length
+      env['length'] = binaryCompression (a, b) -> a.length + b.length
       env['cons'] = ([a, b]) -> a.concat(b)
       env['car'] = ([a]) -> a
       env['cdr'] = ([a, args...]) -> args
-      env['append'] = ([a, b]) -> a.concat(b)
-      env['list'] = (args) -> args
+      env['append'] = (args, env) -> evalTree ['list', (args.reduce (a, b) -> (evalTree a, env).concat (evalTree b, env))...]
+      env['list'] = mapCompression (a) -> a
     # checks
-      env['list?'] = (args) -> args.every (a) -> a instanceof Array
-      env['null'] = (args) -> args.every (a) -> a.length == 0
-      env['symbol?'] = (args) -> args.every (a) -> typeof a == 'string'
+      env['list?'] = everyCompression (a) -> a instanceof Array
+      env['null'] = everyCompression (a) -> a.length == 0
+      env['symbol?'] = everyCompression (a) -> typeof a == 'string'
     # control flow
-      env['if'] = ([test, consequence, orelse]) -> if test then consequence else orelse
+      env['if'] = ([test, consequence, orelse], env) -> if evalTree test, env then evalTree consequence, env else evalTree orelse, env
     # lists processing
       env["'"] = (args) -> args
       env['"'] = (args) -> "\"#{args.join ' '}\""
     # definitions (variable, function, macro)
-      env['def'] = ([name, value], env) -> env.findEnv(name)[name] = value
-      env['def*'] = (args, env) -> env['def'] name, value for [name, value] in args
+      env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
+      env['def*'] = (args) -> evalTree ['progn', (['def', name, value] for [name, value] in args)...], env
     # aliases
       env['equal?'] = env['=']
       env['eq?'] = env['=']
