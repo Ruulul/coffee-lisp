@@ -119,8 +119,10 @@ exports.addGlobals = addGlobals = (env) ->
       env['"'] = (args) -> "\"#{args.join ' '}\""
     # definitions (variable, function, macro)
       env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
+      env['lambda'] = ([params, expr]) -> (args, env) -> evalTree expr, Env { params, args, outer: env }
       env['def*'] = (args) -> evalTree ['progn', (['def', name, value] for [name, value] in args)...], env
     # aliases
+      env['#'] = env['lambda']
       env['cons'] = env['append']
       env['head'] = env['car']
       env['tail'] = env['cdr']

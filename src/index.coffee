@@ -57,23 +57,22 @@ components.push class LispTranspiler extends Tonic
           String e
         @reRender()
   calculateIdentation: (line) ->
+    return undefined unless line?
     count = 0
     for char in line
       if char == ' ' then count++ else break
     count
   _transpile: (lines, prevLine = '') ->
     return unless lines?.length > 0
-    #debugger
     transpilation = []
     firstIdentation = @calculateIdentation lines[0]
     for line, index in lines
       continue unless (currIdentation = @calculateIdentation line) == firstIdentation 
-      prevIdentation = @calculateIdentation prevLine if prevLine?
-      nextIdentation = @calculateIdentation nextLine if (nextLine = lines[index + 1])?
-      prevIdentation ?= 0
-      nextIdentation ?= 0
+      nextLine = lines[index + 1]
+      nextIdentation = @calculateIdentation nextLine
+      console.log "line: #{line}, nextLine: #{nextLine}, index: #{index}, currIdent: #{currIdentation}, nextIdent: #{nextIdentation}"
       switch
-        when nextIdentation > currIdentation
+        when nextIdentation and nextIdentation > currIdentation
           nextBit = lines.map @calculateIdentation
             .indexOf currIdentation, index + 1
           nextBit = undefined if nextBit is -1
@@ -82,7 +81,7 @@ components.push class LispTranspiler extends Tonic
           #{@_transpile (lines.slice index + 1, nextBit), line}
           #{' '.repeat currIdentation})
           """
-        when nextIdentation <= currIdentation
+        else
           transpilation.push """
           #{' '.repeat currIdentation}(#{line.trim()})
           """
