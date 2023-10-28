@@ -70,7 +70,6 @@ components.push class LispTranspiler extends Tonic
       continue unless (currIdentation = @calculateIdentation line) == firstIdentation 
       nextLine = lines[index + 1]
       nextIdentation = @calculateIdentation nextLine
-      console.log "line: #{line}, nextLine: #{nextLine}, index: #{index}, currIdent: #{currIdentation}, nextIdent: #{nextIdentation}"
       switch
         when nextIdentation and nextIdentation > currIdentation
           nextBit = lines.map @calculateIdentation

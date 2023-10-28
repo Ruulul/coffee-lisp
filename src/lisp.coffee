@@ -51,7 +51,7 @@ handleString = (string, env) ->
     - [x] make aliases work
     - [x] make var definitions
     - [ ] make macro definitions
-    - [ ] make lambda definitions
+    - [x] make lambda definitions
 ###
 exports.evalTree = evalTree = (tree, _env) ->
   env = _env ? global_env
@@ -75,15 +75,12 @@ exports.addGlobals = addGlobals = (env) ->
         result =  evalTree arg, env for arg in args
         result
       env['apply'] = ([fn, args], env) -> 
-        console.log "apply> fn: #{fn}, args: #{prettyFormat args}"
         (env.find evalTree fn, env)((evalTree args, env), env)
       env['eval'] = ([args], env) ->
         console.log "eval> args: #{prettyFormat args}"
         result = evalTree args, env
         return result if result not instanceof Array
         [fn, list...] = result
-        console.log "eval> fn: #{fn}, list: #{prettyFormat list}"
-        console.log "eval> (apply '#{fn} (list #{list.join ' '}))"
         env['apply'] [['quote', fn], ['list', list...]], env
     # math ops
       env['+']  = binaryCompression (a, b) -> a + b
@@ -119,8 +116,12 @@ exports.addGlobals = addGlobals = (env) ->
       env['"'] = (args) -> "\"#{args.join ' '}\""
     # definitions (variable, function, macro)
       env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
-      env['lambda'] = ([params, expr]) -> (args, env) -> evalTree expr, Env { params, args, outer: env }
-      env['def*'] = (args) -> evalTree ['progn', (['def', name, value] for [name, value] in args)...], env
+      env['lambda'] = ([params, expr]) -> 
+        (args, env) -> evalTree expr, Env { params, args, outer: env }
+      env['defun'] = ([name, params, expr], env) ->
+        env['def'] [name, ['lambda', params, expr]], env
+      env['def*'] = (args) ->
+        env['progn'] [(['def', name, value] for [name, value] in args)...], env
     # aliases
       env['#'] = env['lambda']
       env['cons'] = env['append']
