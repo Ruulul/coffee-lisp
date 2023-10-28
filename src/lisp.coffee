@@ -42,9 +42,12 @@ exports.parseTokens = parseTokens = (tokens) ->
 
 handleString = (string, env) -> 
   switch
-    when string[0] in ['"', "'"] and string[0] is string.at -1
+    when string[0] is '"' and string[0] is string.at -1
       string
-    else (env.find string) ? string
+    when string[0] is "'"
+      string.slice 1
+    else
+      env.find string
 
 ###
   TODOs:
