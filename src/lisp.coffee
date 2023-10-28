@@ -23,6 +23,7 @@ exports.tokenize = tokenize = (input) -> (
   .replaceAll ')', ' ) '
   .trim()
   .split /\s+/
+  .reverse()
 )
 exports.parseTokens = parseTokens = (tokens) ->
   return new Error 'Unexpected EOF' if tokens.length == 0

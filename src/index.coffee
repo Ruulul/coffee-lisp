@@ -48,13 +48,12 @@ components.push class LispTranspiler extends Tonic
     e.preventDefault()
     switch event
       when 'eval'
-        tokens = tokenize @state.output
-
-        tree = parseTokens tokens.reverse()
-
-        @state.eval = try evalTree tree, lisp.doFreshEnv() catch e 
-          console.log e
-          String e
+        @state.eval = 
+          try 
+            evalTree (parseTokens tokenize @state.output), lisp.doFreshEnv() 
+          catch e 
+            console.log e
+            String e
         @reRender()
   calculateIdentation: (line) ->
     return undefined unless line?
