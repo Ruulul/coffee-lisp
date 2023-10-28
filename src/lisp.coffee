@@ -104,9 +104,8 @@ exports.addGlobals = addGlobals = (env) ->
       env['not'] = ([a], env) -> not (evalTree a, env)
     # list operations
       env['length'] = binaryCompression (a, b) -> a.length + b.length
-      env['cons'] = ([a, b]) -> a.concat(b)
-      env['car'] = ([a]) -> a
-      env['cdr'] = ([a, args...]) -> args
+      env['car'] = ([a], env) -> evalTree a, env
+      env['cdr'] = ([a, args...], env) -> evalTree args, env
       env['append'] = (args, env) -> evalTree ['list', (args.reduce (a, b) -> (evalTree a, env).concat (evalTree b, env))...]
       env['list'] = mapCompression (a) -> a
     # checks
@@ -122,6 +121,9 @@ exports.addGlobals = addGlobals = (env) ->
       env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
       env['def*'] = (args) -> evalTree ['progn', (['def', name, value] for [name, value] in args)...], env
     # aliases
+      env['cons'] = env['append']
+      env['head'] = env['car']
+      env['tail'] = env['cdr']
       env['equal?'] = env['=']
       env['eq?'] = env['=']
       env['string'] = env['"']
