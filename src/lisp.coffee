@@ -85,11 +85,6 @@ exports.addGlobals = addGlobals = (env) ->
         result
       env['apply'] = ([fn, args], env) -> 
         (env.find evalTree fn, env)((evalTree args, env), env)
-      env['eval'] = ([args], env) ->
-        result = evalTree args, env
-        return result if result not instanceof Array
-        [fn, list...] = result
-        env['apply'] ["'" + fn, ['quote', list...]], env
     # math ops
       env['+']  = binaryCompression (a, b) -> a + b
       env['-']  = binaryCompression (a, b) -> a - b
@@ -131,6 +126,15 @@ exports.addGlobals = addGlobals = (env) ->
       env['def*'] = (args) ->
         env['progn'] (args.map ([name, value]) -> ['def', name, value]), env
       env["'"] = (args, env) -> args
+      env['eval'] = ([args], env) ->
+        env['if'] [
+          ['list?', args],
+          args,
+          ['apply',
+            ['quote', 'eval', args[1]],
+            ['quote', 'eval', args.slice 1]
+          ]
+        ], env
     # aliases
       env['#'] = env['lambda']
       env['cons'] = env['append']
