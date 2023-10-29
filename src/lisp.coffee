@@ -1,5 +1,5 @@
 
-prettyFormat = (x) -> JSON.stringify x, undefined, 4
+prettyFormat = (x) -> (JSON.stringify x, undefined, 4) + " (#{x?.constructor?.name ? typeof x})"
 prettyPrint = (x) -> console.log prettyFormat x
 
 exports.Env = Env = (obj) ->
@@ -47,7 +47,7 @@ handleString = (string, env) ->
     when string[0] is "'"
       string.slice 1
     else
-      env.find string
+      if isNaN string then env.find string else parseFloat string
 
 ###
   TODOs:
@@ -58,15 +58,20 @@ handleString = (string, env) ->
     - [x] make lambda definitions
 ###
 exports.evalTree = evalTree = (tree, _env) ->
+  console.log "evaluating expression #{prettyFormat tree}"
   env = _env ? global_env
   if tree not instanceof Array
     switch typeof tree
       when 'string'
-        return handleString tree, env
+        result = handleString tree, env
       else
-        return tree
-  head = tree.shift()
-  env.find(head)?(tree, env) ? throw new ReferenceError " #{head} does not exist in context"
+        result = tree
+    console.log "#{prettyFormat tree} evaluated to #{prettyFormat result}"
+  else
+    head = tree.shift()
+    result = env.find(head)?(tree, env) ? throw new ReferenceError " #{prettyFormat head} does not exist in context"
+    console.log "#{prettyFormat head} call on #{prettyFormat tree} evaluated to #{prettyFormat result}"
+  result
 
 binaryCompression = (fn) ->
   (args, env) -> args.reduce (a, b) -> fn (evalTree a, env), (evalTree b, env)
@@ -79,13 +84,14 @@ exports.addGlobals = addGlobals = (env) ->
         result =  evalTree arg, env for arg in args
         result
       env['apply'] = ([fn, args], env) -> 
+        console.log "apply> fn: #{fn} args: #{prettyFormat args}"
         (env.find evalTree fn, env)((evalTree args, env), env)
       env['eval'] = ([args], env) ->
         console.log "eval> args: #{prettyFormat args}"
         result = evalTree args, env
         return result if result not instanceof Array
         [fn, list...] = result
-        env['apply'] [['quote', fn], ['list', list...]], env
+        env['apply'] ["'" + fn, ['list', list...]], env
     # math ops
       env['+']  = binaryCompression (a, b) -> a + b
       env['-']  = binaryCompression (a, b) -> a - b
@@ -107,8 +113,10 @@ exports.addGlobals = addGlobals = (env) ->
       env['length'] = binaryCompression (a, b) -> a.length + b.length
       env['car'] = ([a], env) -> evalTree a, env
       env['cdr'] = ([a, args...], env) -> evalTree args, env
-      env['append'] = (args, env) -> evalTree ['list', (args.reduce (a, b) -> (evalTree a, env).concat (evalTree b, env))...]
-      env['list'] = mapCompression (a) -> a
+      env['append'] = binaryCompression (a, b) -> a.concat b 
+      env['list'] = (args, env) ->
+        console.log "list> args: #{prettyFormat args}"
+        (mapCompression (a) -> a) args, env
     # checks
       env['list?'] = everyCompression (a) -> a instanceof Array
       env['null'] = everyCompression (a) -> a.length == 0
@@ -116,16 +124,17 @@ exports.addGlobals = addGlobals = (env) ->
     # control flow
       env['if'] = ([test, consequence, orelse], env) -> if evalTree test, env then evalTree consequence, env else evalTree orelse, env
     # lists processing
-      env["'"] = (args) -> args
       env['"'] = (args) -> "\"#{args.join ' '}\""
     # definitions (variable, function, macro)
       env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
       env['lambda'] = ([params, expr]) -> 
         (args, env) -> evalTree expr, Env { params, args, outer: env }
+    # hardcoded macros
       env['defun'] = ([name, params, expr], env) ->
         env['def'] [name, ['lambda', params, expr]], env
       env['def*'] = (args) ->
-        env['progn'] [(['def', name, value] for [name, value] in args)...], env
+        env['progn'] (args.map ([name, value]) -> ['def', name, value]), env
+      env["'"] = (args, env) -> env['list'] (args.map (arg) -> "'" + arg), env
     # aliases
       env['#'] = env['lambda']
       env['cons'] = env['append']
