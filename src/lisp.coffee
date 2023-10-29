@@ -5,7 +5,14 @@ prettyPrint = (x) -> console.log prettyFormat x
 exports.Env = Env = (obj) ->
   env = {}
   outer = obj.outer
-  env[obj.params[i]] = arg for arg, i in obj.args
+  if '&rest' in obj.params
+    for param, i in obj.params
+      break if param is '&rest'
+      env[param] = obj.args[i]
+    j = i + 1
+    env[obj.params[j]] = obj.args.slice i
+  else
+    env[obj.params[i]] = arg for arg, i in obj.args
   env.find = (variable) ->
     if variable of env
       env[variable]
