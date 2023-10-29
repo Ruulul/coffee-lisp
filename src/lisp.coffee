@@ -84,10 +84,8 @@ exports.addGlobals = addGlobals = (env) ->
         result =  evalTree arg, env for arg in args
         result
       env['apply'] = ([fn, args], env) -> 
-        console.log "apply> fn: #{fn} args: #{prettyFormat args}"
         (env.find evalTree fn, env)((evalTree args, env), env)
       env['eval'] = ([args], env) ->
-        console.log "eval> args: #{prettyFormat args}"
         result = evalTree args, env
         return result if result not instanceof Array
         [fn, list...] = result
@@ -113,10 +111,8 @@ exports.addGlobals = addGlobals = (env) ->
       env['length'] = binaryCompression (a, b) -> a.length + b.length
       env['car'] = ([a], env) -> evalTree a, env
       env['cdr'] = ([a, args...], env) -> evalTree args, env
-      env['append'] = binaryCompression (a, b) -> a.concat b 
-      env['list'] = (args, env) ->
-        console.log "list> args: #{prettyFormat args}"
-        (mapCompression (a) -> a) args, env
+      env['append'] = binaryCompression (a, b) -> a.concat b
+      env['list'] = mapCompression (a) -> a
     # checks
       env['list?'] = everyCompression (a) -> a instanceof Array
       env['null'] = everyCompression (a) -> a.length == 0
@@ -134,7 +130,7 @@ exports.addGlobals = addGlobals = (env) ->
         env['def'] [name, ['lambda', params, expr]], env
       env['def*'] = (args) ->
         env['progn'] (args.map ([name, value]) -> ['def', name, value]), env
-      env["'"] = (args, env) -> env['list'] (args.map (arg) -> "'" + arg), env
+      env["'"] = (args, env) -> args
     # aliases
       env['#'] = env['lambda']
       env['cons'] = env['append']
