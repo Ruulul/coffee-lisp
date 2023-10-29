@@ -70,8 +70,8 @@ components.push class LispTranspiler extends Tonic
       nextLine = lines[index + 1]
       nextIdentation = @calculateIdentation nextLine
       switch
-        when line[0] is '`'
-          transpilation.push line.slice 1
+        when line.trim()[0] is '`'
+          transpilation.push (' '.repeat currIdentation) + line.slice 1 + line.indexOf '`'
         when nextIdentation and nextIdentation > currIdentation
           nextBit = lines.map @calculateIdentation
             .indexOf currIdentation, index + 1
