@@ -89,7 +89,7 @@ exports.addGlobals = addGlobals = (env) ->
         result = evalTree args, env
         return result if result not instanceof Array
         [fn, list...] = result
-        env['apply'] ["'" + fn, ['list', list...]], env
+        env['apply'] ["'" + fn, ['quote', list...]], env
     # math ops
       env['+']  = binaryCompression (a, b) -> a + b
       env['-']  = binaryCompression (a, b) -> a - b
