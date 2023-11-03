@@ -1,6 +1,9 @@
 
 prettyFormat = (x) -> (JSON.stringify x, undefined, 4) + " (#{x?.constructor?.name ? typeof x})"
-prettyPrint = (x) -> console.log prettyFormat x
+prettyPrint = (strings, expressions...) ->
+  output = for string, i in strings when string isnt ''
+    string + prettyFormat expressions[i] 
+  console.log output.join ''
 
 exports.Env = Env = (obj) ->
   env = {}
@@ -45,7 +48,8 @@ exports.parseTokens = parseTokens = (tokens) ->
     when token == ')'
       throw new SyntaxError 'Unexpected )'
     else
-      if isNaN token then token else parseFloat token
+      token = parseFloat token unless isNaN token
+      token
 
 handleString = (string, env) -> 
   switch
@@ -56,6 +60,13 @@ handleString = (string, env) ->
     else
       if isNaN string then env.find string else parseFloat string
 
+treeToString = (tree) ->
+  if tree instanceof Array
+    "(#{
+      tree.map treeToString
+      .join ' '})"
+  else
+    tree
 ###
   TODOs:
     - [x] make quote not evaluate the subtree
@@ -65,19 +76,23 @@ handleString = (string, env) ->
     - [x] make lambda definitions
 ###
 exports.evalTree = evalTree = (tree, _env) ->
-  console.log "evaluating expression #{prettyFormat tree}"
+  prettyPrint"evaluating expression #{tree}"
   env = _env ? global_env
+  prettyPrint"env is #{env}"
   if tree not instanceof Array
     switch typeof tree
       when 'string'
         result = handleString tree, env
       else
         result = tree
-    console.log "#{prettyFormat tree} evaluated to #{prettyFormat result}"
+    prettyPrint"#{ tree} evaluated to #{result}"
   else
     head = tree.shift()
-    result = env.find(head)?(tree, env) ? throw new ReferenceError " #{prettyFormat head} does not exist in context"
-    console.log "#{prettyFormat head} call on #{prettyFormat tree} evaluated to #{prettyFormat result}"
+    prettyPrint"head is #{head}"
+    fn = env.find(head)
+    prettyPrint"fn is #{fn}"
+    result = fn?(tree, env) ? throw new ReferenceError "#{prettyFormat head} does not exist in context"
+    prettyPrint"#{head} call on #{tree} evaluated to #{result}"
   result
 
 binaryCompression = (fn) ->
@@ -91,7 +106,10 @@ exports.addGlobals = addGlobals = (env) ->
         result =  evalTree arg, env for arg in args
         result
       env['apply'] = ([fn, args], env) -> 
-        (env.find evalTree fn, env)((evalTree args, env), env)
+        fn = evalTree fn, env
+        args = evalTree args, env
+        prettyPrint"apply> fn: #{fn} args: #{args}"
+        (env.find fn)(args, env)
     # math ops
       env['+']  = binaryCompression (a, b) -> a + b
       env['-']  = binaryCompression (a, b) -> a - b
@@ -104,7 +122,9 @@ exports.addGlobals = addGlobals = (env) ->
       env['<']  = binaryCompression (a, b) -> a < b
       env['>='] = binaryCompression (a, b) -> a >= b
       env['<='] = binaryCompression (a, b) -> a == b
-      env['=']  = ([a, args...], env) -> do (args, env) -> everyCompression (b) -> b == evalTree a, env
+      env['=']  = ([a, args...], env) ->
+        value = evalTree a, env
+        (everyCompression (b) -> b == value)(args, env)
     # boolean logic
       env['and'] = binaryCompression (a, b) -> a and b
       env['or']  = binaryCompression (a, b) -> a or b
@@ -120,13 +140,22 @@ exports.addGlobals = addGlobals = (env) ->
       env['null'] = everyCompression (a) -> a.length == 0
       env['symbol?'] = everyCompression (a) -> typeof a == 'string'
     # control flow
-      env['if'] = ([test, consequence, orelse], env) -> if evalTree test, env then evalTree consequence, env else evalTree orelse, env
+      env['if'] = ([test, consequence, orelse], env) ->
+        if evalTree test, env
+          evalTree consequence, env 
+        else evalTree orelse, env
     # lists processing
       env['"'] = (args) -> "\"#{args.join ' '}\""
     # definitions (variable, function, macro)
       env['def'] = ([name, value], env) -> env.findEnv(name)[name] = evalTree value, env
-      env['lambda'] = ([params, expr]) -> 
-        (args, env) -> evalTree expr, Env { params, args, outer: env }
+      env['lambda'] = ([params, expr], env) -> 
+        lambda = (args, env) ->
+          prettyPrint"anon func args> #{args}"
+          flattenedTree = for arg in args
+            evalTree arg, env
+          evalTree expr, Env { params, args: flattenedTree, outer: env }
+        lambda.toJSON = -> "#{treeToString params} -> #{treeToString expr}"
+        lambda
     # hardcoded macros
       env['defun'] = ([name, params, expr], env) ->
         env['def'] [name, ['lambda', params, expr]], env
@@ -134,14 +163,11 @@ exports.addGlobals = addGlobals = (env) ->
         env['progn'] (args.map ([name, value]) -> ['def', name, value]), env
       env["'"] = (args, env) -> args
       env['eval'] = ([args], env) ->
-        env['if'] [
-          ['list?', args],
-          args,
-          ['apply',
-            ['quote', 'eval', args[1]],
-            ['quote', 'eval', args.slice 1]
-          ]
-        ], env
+        result = evalTree args, env
+        return result unless result instanceof Array
+        [fn, args...] = result
+        env['apply'] [['quote', fn], ['list'].concat args]
+        , env
     # aliases
       env['#'] = env['lambda']
       env['cons'] = env['append']
