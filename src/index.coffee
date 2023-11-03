@@ -12,6 +12,7 @@ processEvent = (fn, dataKey = 'event') ->
 
 components.push class PrettyLisp extends Tonic
   keydown: processEvent handleTabsOnTextArea = (event, textarea, e) ->
+    textarea.style.height = textarea.scrollHeight + 'px'
     if event == 'input'
       if e.keyCode == '\t'.charCodeAt 0
         e.preventDefault()
@@ -92,6 +93,7 @@ components.push class LispTranspiler extends Tonic
     @state.output = 'transpiling...'
     @reRender()
     @state.output = String @_transpile input.split '\n'
+    @state.output = @state.output.replace /\s+\)/g, ')'
     @reRender()
   render: ->
     @html"""
